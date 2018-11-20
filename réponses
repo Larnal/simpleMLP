@@ -1,0 +1,11 @@
+1. Pourquoi sépare-t-on les données en deux ensembles, d’apprentissage et de test ?
+==> Les données de tests sont séparées des données d'apprentissage pour éviter d'overfitter (surapprendre) sur les données de test.
+Le but du set de test est d'assurer une bonne capacité de généralisation.
+
+2. Quel intérêt y-a-t-il à représenter les seuils θ des cellules par des poids reliés à des entrées
+constantes à 1 ?
+==> Permet d'ajouter le biais dans le même vecteur (vecteur des poids) pour un neurone donné. Cette formalisation facilite l'écriture.
+
+Quelle structure de réseau peut-on utiliser dans le problème de reconnaissance de chiffres ma-
+nuscrits posé ?
+==> On peut utiliser un réseau de neurones de type perceptron mulicouches \o/
