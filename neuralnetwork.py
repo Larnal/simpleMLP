@@ -185,51 +185,53 @@ def mlp2train(x, target, w1, w2, lr, it):
     return w1, w2, L
 
 
-def mlpntrain(x, target, ws, lr, it):
-    """ Train a n-layer MLP.
-            @:param x = input (vector [n,1] or matrix [n,k])
-            @:param target = desired output (vector [m,1] or matrix [m,k])
-            @:param ws, w2 = 3-dim matrix of weights and bias. First dim is the layer.
-            @:param lr = learning rate (scalar)
-            @:param it = number of iteration (scalar)
-            @:returns L = quadratic error after the training (scalar)
-            @:returns new weights and bias matrix after the training """
-
-    # ws = np.asarray(ws).squeeze()
-    #
-    # if ws.ndim == 2:
-    #     return mlp1train(x, target, ws, lr, it)
-    #
-    # elif ws.ndim == 3:
-
-    L = []  # Quadratic error
-
-    for _ in range(it):
-
-        # Generate the list of inputs for each layer
-        xs = [x]
-        for w in ws[:-1]:
-            xs.append(mlp1run(xs[-1], w).squeeze())
-
-        # Generate the list of sigmoid derivative for each layer
-        sigps = [w.transpose().dot(row1(x)) for w, x in zip(ws, xs)]
-
-        # Calculate the output, error and squared error
-        y = mlp1run(xs[-1], ws[-1])
-        error = mlperror(y, target)
-        L.append(sqrerror(error))
-
-        # Calculate deltas for each layer, in reverse order, then flip them
-        deltas = [np.multiply(error, sigps[-1])]
-        for sigp, w in zip(reversed(sigps[:-2]), reversed(ws)):
-            deltas.append([np.multiply(sigp, w[1:, :].transpose().dot(deltas[-1]))])
-
-        deltas.reverse()
-
-        # Calculate new weights and bias
-        # (A*B')' = B*A'
-        # ws = ws - lr * np.transpose(deltas.dot(np.transpose(xs, (0, 2, 1))), (0, 2, 1))
-        xs = [row1(x) for x in xs]      # Add 1's to matrix of inputs
-        ws = [w - lr * x.dot(np.asarray(d).T) for x, w, d in zip(xs, ws, deltas)]
-
-    return ws, L
+# DO NOT WORK YET !!
+#
+# def mlpntrain(x, target, ws, lr, it):
+#     """ Train a n-layer MLP.
+#             @:param x = input (vector [n,1] or matrix [n,k])
+#             @:param target = desired output (vector [m,1] or matrix [m,k])
+#             @:param ws, w2 = 3-dim matrix of weights and bias. First dim is the layer.
+#             @:param lr = learning rate (scalar)
+#             @:param it = number of iteration (scalar)
+#             @:returns L = quadratic error after the training (scalar)
+#             @:returns new weights and bias matrix after the training """
+#
+#     # ws = np.asarray(ws).squeeze()
+#     #
+#     # if ws.ndim == 2:
+#     #     return mlp1train(x, target, ws, lr, it)
+#     #
+#     # elif ws.ndim == 3:
+#
+#     L = []  # Quadratic error
+#
+#     for _ in range(it):
+#
+#         # Generate the list of inputs for each layer
+#         xs = [x]
+#         for w in ws[:-1]:
+#             xs.append(mlp1run(xs[-1], w).squeeze())
+#
+#         # Generate the list of sigmoid derivative for each layer
+#         sigps = [w.transpose().dot(row1(x)) for w, x in zip(ws, xs)]
+#
+#         # Calculate the output, error and squared error
+#         y = mlp1run(xs[-1], ws[-1])
+#         error = mlperror(y, target)
+#         L.append(sqrerror(error))
+#
+#         # Calculate deltas for each layer, in reverse order, then flip them
+#         deltas = [np.multiply(error, sigps[-1])]
+#         for sigp, w in zip(reversed(sigps[:-2]), reversed(ws)):
+#             deltas.append([np.multiply(sigp, w[1:, :].transpose().dot(deltas[-1]))])
+#
+#         deltas.reverse()
+#
+#         # Calculate new weights and bias
+#         # (A*B')' = B*A'
+#         # ws = ws - lr * np.transpose(deltas.dot(np.transpose(xs, (0, 2, 1))), (0, 2, 1))
+#         xs = [row1(x) for x in xs]      # Add 1's to matrix of inputs
+#         ws = [w - lr * x.dot(np.asarray(d).T) for x, w, d in zip(xs, ws, deltas)]
+#
+#     return ws, L
