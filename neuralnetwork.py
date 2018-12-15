@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def normalize(x):
     """ Normalize x positive vector or matrix between -1 and 1
            @:param x = matrix or vector to modify. Size [n, k]
@@ -17,16 +18,16 @@ def row1(x):
 
 def mlp1def(n, m):
     """ Generate a weight and biais matrix for 1-layer MLP.
-        @:param n = must be the number of inputs of the network
+        @:param n = number of inputs of the network
         @:param m = number of perceptrons in the 1-layer MLP
-        @:returns a [n + 1, m] random uniform matrix of weights (+ bias)"""
+        @:returns a [m, n + 1] random uniform matrix of weights (+ bias)"""
 
-    return np.random.uniform(-1, 1, m * (n + 1)).reshape([n + 1, m])
+    return np.random.uniform(-1, 1, m * (n + 1)).reshape([m, n + 1])
 
 
 def mlp2def(n, c, m):
     """ Generate a weight and biais matrix for 2-layer, fully connected MLP.
-        @:param n = must be the number of inputs of the network
+        @:param n = number of inputs of the network
         @:param c = number of perceptrons in the hidden-layer
         @:param m = number of perceptrons in the output-layer
         @:returns random uniform matrices of weights (+ bias) for the hidden and output layer"""
@@ -38,6 +39,7 @@ def sigmo(v):
     """ Calculate the sigmoid function of each element in a vector.
         @:param v = argument vector
         @:returns a vector the same size as the argument vector activated by a sigmoid, element-wise"""
+
     return (1 - np.nan_to_num(np.exp(-2 * v))) / (1 + np.nan_to_num(np.exp(-2 * v)))
 
 
@@ -51,27 +53,29 @@ def sigmop(v):
 
 def mlp1run(x, w):
     """ Run a 1-layer MLP
-        @:param x = input (vector or matrix). Size n * k, n = number of input in one example, k = number of examples
-        @:param w = matrix of weights and bias. Size m * (n + 1), m = number of perceptrons
-        @:returns output value of the perceptrons. Size m * k """
+        @:param x = input (vector or matrix). Size [n, k], n = number of input in one example, k = number of examples
+        @:param w = matrix of weights and bias. Size [m, n+1], m = number of perceptrons
+        @:returns output value of the MLP. Size [m, k]"""
 
-    return sigmo(w.transpose().dot(row1(x)))
+    return sigmo(w.dot(row1(x)))
 
 
 def mlp2run(x, w1, w2):
     """ Run a 2-layers MLP
-        @:param x = input (vector or matrix). Size n * k, n = number of input in one example, k = number of examples
+        @:param x = input (vector or matrix). Size [n, k], n = number of input in one example, k = number of examples
         @:param w1, w2 = matrix of weights and bias for the 1st (hidden) layer and output layer.
-        @:returns output value of the MLP. Size m * k with m the number of output-layer perceptrons."""
+        w1 of size Size [m, n+1], m = number of perceptrons of the 1st layer,
+        w2 of size [c, m+1], c = number of perceptions of the last layer,
+        @:returns output value of the MLP. Size [c, k]"""
 
     return mlp1run(mlp1run(x, w1), w2)
 
 
 def mlpnrun(x, ws):
     """ Run a multi-layers MLP
-        @:param x = input (vector or matrix). Size n * k, n = number of input in one example, k = number of examples
+        @:param x = input (vector or matrix). Size [n, k], n = number of input in one example, k = number of examples
         @:param ws = 3-dim matrix of weights and bias for each layer of the MLP. First dimension must represents each layer
-        @:returns output value of the MLP. Size m * k with m the number of output-layer perceptrons."""
+        @:returns output value of the MLP. Size [m, k] with m the number of output-layer perceptrons."""
 
     for w in ws:
         x = mlp1run(x, w)
@@ -79,20 +83,19 @@ def mlpnrun(x, ws):
 
 
 def mlpclass(y):
-    """ Get the output class.
-        Does the opposite of label2target(c).
-        @:param y = output of the MLP (vector or matrix)
-        @:returns output class or label (scalar or vector) """
+    """ Get the output label. Does the opposite of label2target().
+        @:param y = output of the MLP (vector or matrix). Size [m, k] or [m, 1],
+            m = nb of perceptrons of last layer, k = number of input examples
+        @:returns output label (scalar or vector [1, k])"""
 
     return np.argmax(y, axis=0)
 
 
 def label2target(c):
-    """ Convert a label (scalar or vector) into a target vector (or matrix) with desired values (-1 or 1).
-        Does the opposite of mlpclass(y).
-        @:param nclass = number of classes in the classification problem
-        @:param c = class (assuming class are designed by a integer value from 0 to nclass - 1)
-        @:returns a vector or matrix of targets"""
+    """ Convert a label into a target with desired values (-1 or 1). Does the opposite of mlpclass().
+    (assuming class are designed by a integer value from 0 to nclass - 1)
+        @:param c = label. scalar or vector [1, k], k = number of examples
+        @:returns a vector or matrix of targets. Labels are sorted from 0 to (nb of labels - 1). Size = [m, k]"""
 
     mat = -1. * np.ones([np.max(c) + 1, c.size], dtype=float)
     for i, p in enumerate(c):
@@ -102,27 +105,27 @@ def label2target(c):
 
 def score(label, labelD):
     """ Calculate the score and rate of the MLP.
-        @:param label = output class of the MLP (scalar or vector)
-        @:param labelD = desired label. label and labelD must be of the same size.
-        @:returns (score) = number of successful classification
-        @:returns (rate) = rate of successful classification """
+        @:param label = output labels of the MLP. scalar or vector [1, k], k = number of labels
+        @:param labelD = desired label. scalar or vector [1, k]
+        @:returns (score) = number of successful classification. Size [1, k]
+        @:returns (rate) = rate of successful classification. Size [1, k]"""
 
     return np.sum(label == labelD), np.sum(label == labelD) / label.size
 
 
 def mlperror(y, target):
     """ Calculate the error as the difference between the output - target.
-        @:param y = (vector or matrix) output of the MLP
-        @:param target = (vector or matrix) desired output. y and target must be of the same size.
-        @:returns a vector or matrix of errors, same size as y and target """
+        @:param y = output of the MLP. Size [l, k], l = nb of possible labels, k = nb of examples
+        @:param target = desired output. Size [l, k]
+        @:returns a vector or matrix of errors. Size [l, k]"""
 
     return y - target
 
 
 def sqrerror(error):
-    """ Calculate the square error.
-        @:param error = (vector or matrix) error
-        @:returns square error (scalar) """
+    """ Calculate quadratic error.
+        @:param error = error. Size [l, k], l = nb of possible labels, k = nb of examples
+        @:returns quadratic error (scalar) """
 
     return 0.5 * np.sum(np.square(error))
 
@@ -142,9 +145,12 @@ def mlp1train(x, target, w, lr, it):
         print("learning it ", _)
         error = mlperror(mlp1run(x, w), target)
         L.append(sqrerror(error))
-        delta = np.multiply(error, sigmop(w.transpose().dot(row1(x))))
-        # w = w - lr * delta.dot(row1(x).transpose()).transpose()
-        w = w - lr * row1(x).dot(delta.transpose())
+
+        # Calculate deltas of layer
+        delta = np.multiply(error, sigmop(w.dot(row1(x))))  # size [m, k]
+
+        # Calculate new weigths and bias
+        w = w - lr * delta.dot(row1(x).T)
 
     return w, L
 
@@ -162,10 +168,9 @@ def mlp2train(x, target, w1, w2, lr, it):
     L = []  # Quadratic error
 
     for _ in range(it):
-        print("learning it ", _)
         # Calculate derivative of sigmoid for both layers
-        sigp1 = sigmop(w1.transpose().dot(row1(x)))
-        sigp2 = sigmop(w2.transpose().dot(row1(mlp1run(x, w1))))
+        sigp1 = sigmop(w1.dot(row1(x)))
+        sigp2 = sigmop(w2.dot(row1(mlp1run(x, w1))))
 
         # Calculate the output, error and squared error
         y = mlp2run(x, w1, w2)
@@ -174,13 +179,11 @@ def mlp2train(x, target, w1, w2, lr, it):
 
         # Calculate deltas of layers
         delta2 = np.multiply(error, sigp2)
-        delta1 = np.multiply(sigp1, w2[1:, :].dot(delta2))
+        delta1 = np.multiply(sigp1, w2[:,1:].T.dot(delta2))
 
         # Calculate new weigths and bias
-        # (A*B')' = B*A'
-        #  w2 = w2 - lr * delta2.dot(row1(mlp1run(x, w1)).transpose()).transpose()
-        w1 = w1 - lr * row1(x).dot(delta1.transpose())
-        w2 = w2 - lr * row1(mlp1run(x, w1).dot(delta2.transpose()))
+        w1 = w1 - lr * delta1.dot(row1(x).T)
+        w2 = w2 - lr * delta2.dot(row1(mlp1run(x, w1)).T)
 
     return w1, w2, L
 
