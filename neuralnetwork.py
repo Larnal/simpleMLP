@@ -5,7 +5,10 @@ def normalize(x):
     """ Normalize x positive vector or matrix between -1 and 1
            @:param x = matrix or vector to modify. Size [n, k]
            @:returns matrix or vector with added row of 1. Size is [n+1, k]"""
-    return np.interp(x, (x.min(), x.max()), (-1, +1))
+    range = 2
+    s = x - x.min()
+    s = range * s / s.max()
+    return s - range / 2
 
 
 def row1(x):
@@ -39,8 +42,11 @@ def sigmo(v):
     """ Calculate the sigmoid function of each element in a vector.
         @:param v = argument vector
         @:returns a vector the same size as the argument vector activated by a sigmoid, element-wise"""
-
-    return (1 - np.nan_to_num(np.exp(-2 * v))) / (1 + np.nan_to_num(np.exp(-2 * v)))
+    limit = 2
+    v[v < -limit] = -limit
+    v[v > limit] = limit
+    return (1 - np.exp(-2 * v)) / (1 + np.exp(-2 * v))
+    # return (1 - np.nan_to_num(np.exp(-2 * v))) / (1 + np.nan_to_num(np.exp(-2 * v)))
 
 
 def sigmop(v):
@@ -48,7 +54,7 @@ def sigmop(v):
         @:param v = argument vector or matrix
         @:returns a vector the same size as the argument vector"""
 
-    return 1 - np.power(sigmo(v), 2)
+    return 1 - sigmo(v)**2
 
 
 def mlp1run(x, w):
@@ -74,7 +80,7 @@ def mlp2run(x, w1, w2):
 def mlpnrun(x, ws):
     """ Run a multi-layers MLP
         @:param x = input (vector or matrix). Size [n, k], n = number of input in one example, k = number of examples
-        @:param ws = 3-dim matrix of weights and bias for each layer of the MLP. First dimension must represents each layer
+        @:param ws = 3-dim matrix of weights and bias for each layer of the MLP. First dimension represents layer
         @:returns output value of the MLP. Size [m, k] with m the number of output-layer perceptrons."""
 
     for w in ws:
@@ -97,7 +103,7 @@ def label2target(c):
         @:param c = label. scalar or vector [1, k], k = number of examples
         @:returns a vector or matrix of targets. Labels are sorted from 0 to (nb of labels - 1). Size = [m, k]"""
 
-    mat = -1. * np.ones([np.max(c) + 1, c.size], dtype=float)
+    mat = -1. * np.ones([len(np.unique(c)), c.size], dtype=float)
     for i, p in enumerate(c):
         mat[p, i] = 1
     return mat
@@ -141,16 +147,15 @@ def mlp1train(x, target, w, lr, it):
         @:returns new weights and bias matrix after the training (matrix [m,n+1]) """
 
     L = []
-    for _ in range(it):
-        print("learning it ", _)
+    for i in range(it):
         error = mlperror(mlp1run(x, w), target)
         L.append(sqrerror(error))
 
         # Calculate deltas of layer
-        delta = np.multiply(error, sigmop(w.dot(row1(x))))  # size [m, k]
+        deltas = error * sigmop(w.dot(row1(x)))
 
         # Calculate new weigths and bias
-        w = w - lr * delta.dot(row1(x).T)
+        w = w - lr * deltas.dot(row1(x).T)
 
     return w, L
 
@@ -166,27 +171,30 @@ def mlp2train(x, target, w1, w2, lr, it):
             @:returns new weights and bias matrix after the training (matrix [c,n+1] and [m,n+1] """
 
     L = []  # Quadratic error
+    K = x.shape[1]
 
     for _ in range(it):
+        # Input of each layer
+        x1 = row1(x)
+        x2 = row1(mlp1run(x, w1))
+
         # Calculate derivative of sigmoid for both layers
-        sigp1 = sigmop(w1.dot(row1(x)))
-        sigp2 = sigmop(w2.dot(row1(mlp1run(x, w1))))
+        sigp1 = sigmop(w1.dot(x1))
+        sigp2 = sigmop(w2.dot(x2))
 
         # Calculate the output, error and squared error
-        y = mlp2run(x, w1, w2)
-        error = mlperror(y, target)
+        error = mlperror(mlp2run(x, w1, w2), target)
         L.append(sqrerror(error))
 
         # Calculate deltas of layers
-        delta2 = np.multiply(error, sigp2)
-        delta1 = np.multiply(sigp1, w2[:,1:].T.dot(delta2))
+        delta2 = error * sigp2
+        delta1 = sigp1 * (w2[:, 1:].T.dot(delta2))
 
         # Calculate new weigths and bias
-        w1 = w1 - lr * delta1.dot(row1(x).T)
-        w2 = w2 - lr * delta2.dot(row1(mlp1run(x, w1)).T)
+        w1 = w1 - lr * delta1.dot(x1.T) / K
+        w2 = w2 - lr * delta2.dot(x2.T) / K
 
     return w1, w2, L
-
 
 # DO NOT WORK YET !!
 #
